@@ -271,7 +271,6 @@ typedef struct {
     SDL_bool m_bHasSensorData;
     Uint32 m_unLastInput;
     Uint32 m_unLastIMUReset;
-    SDL_bool m_bVerticalMode;
 
     SwitchInputOnlyControllerStatePacket_t m_lastInputOnlyState;
     SwitchSimpleStatePacket_t m_lastSimpleState;
@@ -847,12 +846,6 @@ static void SDLCALL SDL_HomeLEDHintChanged(void *userdata, const char *name, con
     }
 }
 
-static void SDLCALL SDL_VerticalHintChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
-{
-    SDL_DriverSwitch_Context *ctx = (SDL_DriverSwitch_Context *)userdata;
-    ctx->m_bVerticalMode = SDL_GetHintBoolean(SDL_HINT_JOYSTICK_HIDAPI_VERTICAL_JOY_CONS, SDL_FALSE);
-}
-
 static void UpdateSlotLED(SDL_DriverSwitch_Context *ctx)
 {
     if (!ctx->m_bInputOnly) {
@@ -1378,11 +1371,6 @@ HIDAPI_DriverSwitch_OpenJoystick(SDL_HIDAPI_Device *device, SDL_Joystick *joysti
     /* Set up for input */
     ctx->m_bSyncWrite = SDL_FALSE;
     ctx->m_unLastIMUReset = ctx->m_unLastInput = SDL_GetTicks();
-
-    /* Set up for vertical mode */
-    ctx->m_bVerticalMode = SDL_GetHintBoolean(SDL_HINT_JOYSTICK_HIDAPI_VERTICAL_JOY_CONS, SDL_FALSE);
-    SDL_AddHintCallback(SDL_HINT_JOYSTICK_HIDAPI_VERTICAL_JOY_CONS,
-                        SDL_VerticalHintChanged, ctx);
 
     return SDL_TRUE;
 
@@ -1925,14 +1913,16 @@ static void HandleMiniControllerStateR(SDL_Joystick *joystick, SDL_DriverSwitch_
 
 static void HandleFullControllerState(SDL_Joystick *joystick, SDL_DriverSwitch_Context *ctx, SwitchStatePacket_t *packet)
 {
+    extern SDL_bool SDL_HIDAPI_vertical_joycons;
+
     if (ctx->m_eControllerType == k_eSwitchDeviceInfoControllerType_JoyConLeft) {
-        if (ctx->device->parent || ctx->m_bVerticalMode) {
+        if (ctx->device->parent || SDL_HIDAPI_vertical_joycons) {
             HandleCombinedControllerStateL(joystick, ctx, packet);
         } else {
             HandleMiniControllerStateL(joystick, ctx, packet);
         }
     } else if (ctx->m_eControllerType == k_eSwitchDeviceInfoControllerType_JoyConRight) {
-        if (ctx->device->parent || ctx->m_bVerticalMode) {
+        if (ctx->device->parent || SDL_HIDAPI_vertical_joycons) {
             HandleCombinedControllerStateR(joystick, ctx, packet);
         } else {
             HandleMiniControllerStateR(joystick, ctx, packet);
@@ -2148,8 +2138,6 @@ HIDAPI_DriverSwitch_CloseJoystick(SDL_HIDAPI_Device *device, SDL_Joystick *joyst
 
     SDL_DelHintCallback(SDL_HINT_JOYSTICK_HIDAPI_SWITCH_PLAYER_LED,
                         SDL_PlayerLEDHintChanged, ctx);
-    SDL_DelHintCallback(SDL_HINT_JOYSTICK_HIDAPI_VERTICAL_JOY_CONS,
-                        SDL_VerticalHintChanged, ctx);
 
     SDL_LockMutex(device->dev_lock);
     {
