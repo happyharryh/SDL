@@ -271,6 +271,7 @@ typedef struct {
     SDL_bool m_bHasSensorData;
     Uint32 m_unLastInput;
     Uint32 m_unLastIMUReset;
+    SDL_bool m_bVerticalMode;
 
     SwitchInputOnlyControllerStatePacket_t m_lastInputOnlyState;
     SwitchSimpleStatePacket_t m_lastSimpleState;
@@ -1372,6 +1373,9 @@ HIDAPI_DriverSwitch_OpenJoystick(SDL_HIDAPI_Device *device, SDL_Joystick *joysti
     ctx->m_bSyncWrite = SDL_FALSE;
     ctx->m_unLastIMUReset = ctx->m_unLastInput = SDL_GetTicks();
 
+    /* Set up for vertical mode */
+    ctx->m_bVerticalMode = SDL_GetHintBoolean(SDL_HINT_JOYSTICK_HIDAPI_VERTICAL_JOY_CONS, SDL_FALSE);
+
     return SDL_TRUE;
 
 error:
@@ -1913,16 +1917,14 @@ static void HandleMiniControllerStateR(SDL_Joystick *joystick, SDL_DriverSwitch_
 
 static void HandleFullControllerState(SDL_Joystick *joystick, SDL_DriverSwitch_Context *ctx, SwitchStatePacket_t *packet)
 {
-    extern SDL_bool SDL_HIDAPI_vertical_joycons;
-
     if (ctx->m_eControllerType == k_eSwitchDeviceInfoControllerType_JoyConLeft) {
-        if (ctx->device->parent || SDL_HIDAPI_vertical_joycons) {
+        if (ctx->device->parent || ctx->m_bVerticalMode) {
             HandleCombinedControllerStateL(joystick, ctx, packet);
         } else {
             HandleMiniControllerStateL(joystick, ctx, packet);
         }
     } else if (ctx->m_eControllerType == k_eSwitchDeviceInfoControllerType_JoyConRight) {
-        if (ctx->device->parent || SDL_HIDAPI_vertical_joycons) {
+        if (ctx->device->parent || ctx->m_bVerticalMode) {
             HandleCombinedControllerStateR(joystick, ctx, packet);
         } else {
             HandleMiniControllerStateR(joystick, ctx, packet);
